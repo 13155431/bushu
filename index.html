@@ -23,8 +23,7 @@
     <div class="nav" id="nav"><!-- 由 app.js 渲染 --></div>
   </div>
 
-  <!-- 微信 JS-SDK：用于在微信内置浏览器里从会话选择文件（wx.chooseMessageFile） -->
-  <script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
+  <!-- 微信 JS-SDK 改为按需懒加载（见 app.js initWx），不在首屏同步加载，避免阻塞页面 -->
   <script src="assets/content.js"></script>
   <script src="assets/app.js"></script>
   <script>

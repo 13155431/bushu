@@ -1004,25 +1004,44 @@
 
   /* ---------- 微信 JS-SDK 初始化（用于 wx.chooseMessageFile 从会话选文件） ---------- */
   // 页面初始时向后端取签名并 wx.config；成功后置 window.__WX_READY__ = true
+  // 仅在微信环境、且进入第6步前按需异步加载微信 JS-SDK，避免非微信环境首屏被阻塞
+  function loadWxScript() {
+    return new Promise((resolve) => {
+      if (typeof wx !== "undefined") { resolve(true); return; }
+      const s = document.createElement("script");
+      s.src = "https://res.wx.qq.com/open/js/jweixin-1.6.0.js";
+      s.async = true;
+      s.onload = () => resolve(true);
+      s.onerror = () => resolve(false); // 加载失败也不阻塞，走标准 input
+      document.head.appendChild(s);
+    });
+  }
+
   function initWx() {
-    if (typeof wx === "undefined") return; // 非微信环境，不启用
-    const pageUrl = location.href.split("#")[0];
-    fetch(API + "/api/wx/jssdk-config?url=" + encodeURIComponent(pageUrl))
-      .then((r) => r.json())
-      .then((cfg) => {
-        if (!cfg || !cfg.ok || !cfg.enabled) return; // 后端未配置，走标准 input
-        wx.config({
-          debug: false,
-          appId: cfg.appId,
-          timestamp: cfg.timestamp,
-          nonceStr: cfg.nonceStr,
-          signature: cfg.signature,
-          jsApiList: ["chooseMessageFile"],
-        });
-        wx.ready(() => { window.__WX_READY__ = true; });
-        wx.error(() => { window.__WX_READY__ = false; });
-      })
-      .catch(() => { /* 忽略，走标准 input */ });
+    if (!/micromessenger/i.test(navigator.userAgent)) return; // 非微信环境直接跳过，绝不加载 jweixin
+    loadWxScript().then((ok) => {
+      if (!ok || typeof wx === "undefined") return; // 加载失败，降级为标准 input
+      const pageUrl = location.href.split("#")[0];
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 5000); // 5 秒超时，避免请求挂起
+      fetch(API + "/api/wx/jssdk-config?url=" + encodeURIComponent(pageUrl), { signal: ctrl.signal })
+        .then((r) => r.json())
+        .then((cfg) => {
+          clearTimeout(timer);
+          if (!cfg || !cfg.ok || !cfg.enabled) return; // 后端未配置，走标准 input
+          wx.config({
+            debug: false,
+            appId: cfg.appId,
+            timestamp: cfg.timestamp,
+            nonceStr: cfg.nonceStr,
+            signature: cfg.signature,
+            jsApiList: ["chooseMessageFile"],
+          });
+          wx.ready(() => { window.__WX_READY__ = true; });
+          wx.error(() => { window.__WX_READY__ = false; });
+        })
+        .catch(() => { clearTimeout(timer); }); // 忽略，走标准 input
+    });
   }
   initWx();
 
