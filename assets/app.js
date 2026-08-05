@@ -799,6 +799,8 @@
 
   /* ---------- 收集与提交 ---------- */
   function gatherS4() {
+    // 仅在第4步表单存在时收集，避免提交（第7步）时 DOM 已不存在，把已保存的需求清空
+    if (state.step !== 4) return;
     const t = state.biz.step4.type;
     if (t === "significance") {
       const vars = [];
@@ -855,6 +857,8 @@
   }
 
   function gatherReview() {
+    // 仅在第5步表单存在时收集，避免提交（第7步）时 DOM 已不存在，把已保存的确认清空
+    if (state.step !== 5 || !document.querySelector('input[name="review_choice"]')) return;
     const choice = checkedVal('input[name="review_choice"]');
     const o = { choice };
     if (choice && choice !== "correct") o.fix = val('textarea[name="review_fix"]');
