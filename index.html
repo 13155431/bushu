@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>数据专家 · 服务引导</title>
+  <meta name="description" content="分步引导客户了解数据专家的服务流程，并在最后提交需求与资料。" />
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <div class="app-wrap">
+    <div class="topbar">
+      <div class="topbar-inner">
+        <span class="logo">数</span>
+        <span id="brand">数据专家 · 服务引导</span>
+      </div>
+      <div class="progress"><span id="bar"></span></div>
+      <div class="step-count" id="count">第 1 步</div>
+    </div>
+
+    <main id="app"><!-- 由 app.js 渲染 --></main>
+
+    <div class="nav" id="nav"><!-- 由 app.js 渲染 --></div>
+  </div>
+
+  <!-- 微信 JS-SDK：用于在微信内置浏览器里从会话选择文件（wx.chooseMessageFile） -->
+  <script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
+  <script src="assets/content.js"></script>
+  <script src="assets/app.js"></script>
+  <script>
+    // 把品牌名同步到顶部
+    if (window.APP_CONFIG && window.APP_CONFIG.brand) {
+      document.getElementById("brand").textContent = window.APP_CONFIG.brand;
+      document.title = window.APP_CONFIG.brand;
+    }
+  </script>
+</body>
+</html>
