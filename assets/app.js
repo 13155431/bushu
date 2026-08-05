@@ -884,6 +884,21 @@
     };
   }
 
+  // 把 base64（dataURL）转回 Blob，用于随表单真实上传文件
+  function dataUrlToBlob(dataUrl) {
+    try {
+      const m = String(dataUrl).match(/^data:([^;]+);base64,(.*)$/);
+      const mime = m ? m[1] : "application/octet-stream";
+      const b64 = m ? m[2] : dataUrl;
+      const bin = atob(b64);
+      const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      return new Blob([arr], { type: mime });
+    } catch (e) {
+      return null;
+    }
+  }
+
   function submit() {
     try {
       gatherS4();
@@ -897,34 +912,63 @@
 
     const done = () => showDone();
 
-    // 方案A：配置了第三方表单服务（如 Formspree）→ 直接 POST 文字需求过去，无需自建后端
+    // 方案A：配置了第三方表单服务（Web3Forms）→ 直接 POST 文字需求 + 真实文件过去，无需自建后端
     const endpoint = (window.APP_CONFIG && window.APP_CONFIG.formEndpoint) || "";
     if (endpoint) {
       const lines = payload.demandSummary || [];
       const review = payload.review || {};
       const reviewMap = { correct: "正确", wrong: "错误，需修改", other: "其他" };
       const reviewSummary = (reviewMap[review.choice] || "未确认") + (review.choice && review.choice !== "correct" && review.fix ? "：" + review.fix : "");
-      const form = {
-        access_key: (window.APP_CONFIG && window.APP_CONFIG.formAccessKey) || "",
-        from_name: (window.APP_CONFIG && window.APP_CONFIG.brand) || "StataBro 服务引导",
-        botcheck: "",
-        _subject: "新需求提交：" + (payload.business || ""),
-        business: payload.business || "",
-        price: payload.price || "",
-        commands: (payload.commands || []).join("\n"),
-        selectedVars: (payload.selectedVars || []).join("、"),
-        demand: JSON.stringify(payload.demand || {}, null, 2),
-        review: JSON.stringify(payload.review || {}, null, 2),
-        reviewSummary: reviewSummary,
-        demandSummary: lines.join("\n"),
-        files: (payload.files || []).map(f => f.name + " (" + formatSize(f.size) + ")").join("、") || "无（文件请客户直接微信发）",
-        submittedAt: payload.submittedAt,
-      };
-      fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify(form),
-      }).then(done).catch(done);
+
+      // 收集所有文件（第4步指标构建 + 第6步），并真实上传
+      const allFiles = [...(state.files || []), ...(state.s6Files || [])];
+      const MAX_FILE = 2 * 1024 * 1024;   // 单文件上限（Web3Forms 免费档约 2MB/文件）
+      const MAX_TOTAL = 8 * 1024 * 1024;  // 附件总大小上限
+      let used = 0;
+      const bigFiles = [];
+
+      const fd = new FormData();
+      fd.append("access_key", (window.APP_CONFIG && window.APP_CONFIG.formAccessKey) || "");
+      fd.append("from_name", (window.APP_CONFIG && window.APP_CONFIG.brand) || "StataBro 服务引导");
+      fd.append("botcheck", "");
+      fd.append("_subject", "新需求提交：" + (payload.business || ""));
+      fd.append("business", payload.business || "");
+      fd.append("price", payload.price || "");
+      fd.append("commands", (payload.commands || []).join("\n"));
+      fd.append("selectedVars", (payload.selectedVars || []).join("、"));
+      fd.append("demand", JSON.stringify(payload.demand || {}, null, 2));
+      fd.append("review", JSON.stringify(payload.review || {}, null, 2));
+      fd.append("reviewSummary", reviewSummary);
+      fd.append("demandSummary", lines.join("\n"));
+
+      (allFiles || []).forEach((f) => {
+        if (!f || !f.data) { bigFiles.push(f); return; }
+        const blob = dataUrlToBlob(f.data);
+        if (blob && f.size <= MAX_FILE && used + f.size <= MAX_TOTAL) {
+          fd.append("attachment", blob, f.name || "file");
+          used += f.size;
+        } else {
+          bigFiles.push(f);
+        }
+      });
+
+      if (allFiles.length) {
+        const smallNote = allFiles.filter((f) => !bigFiles.includes(f))
+          .map((f) => f.name + " (" + formatSize(f.size) + ")").join("、");
+        const bigNote = bigFiles.length
+          ? "以下大文件请通过微信发送：" + bigFiles.map((f) => f.name + " (" + formatSize(f.size) + ")").join("、")
+          : "";
+        fd.append("files", (smallNote ? "已上传：" + smallNote + "\n" : "") + bigNote);
+      } else {
+        fd.append("files", "无（文件请客户直接微信发）");
+      }
+      fd.append("submittedAt", payload.submittedAt);
+
+      fetch(endpoint, { method: "POST", body: fd })
+        .then((r) => (r.ok ? r.json() : { success: false }))
+        .then((j) => { if (!j.success) console.warn("Web3Forms 提交返回：", j.message || "未知错误"); })
+        .catch((e) => console.warn("Web3Forms 提交失败：", e))
+        .finally(done);
       return;
     }
 

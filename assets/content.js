@@ -12,7 +12,7 @@ window.APP_CONFIG = {
   // 1) formEndpoint 填 Web3Forms 固定接口地址（无需改）
   // 2) formAccessKey 填你在 web3forms.com 领取的免费 key（和你的邮箱绑定）
   //    领取步骤：打开 https://web3forms.com → 输入你的邮箱 → 复制 Access Key 发给我即可
-  // 注意：Web3Forms 同样不支持附件，文件请让客户直接微信发你（页面第6步已提示）
+  // 注意：Web3Forms 支持附件（单文件约 2MB、总约 8MB 内随邮件送达）；更大的数据文件仍建议客户微信发你（页面第6步已提示）
   formEndpoint: "https://api.web3forms.com/submit",
   formAccessKey: "768d979d-3246-41f2-b642-1753c87fa3bc",
 
