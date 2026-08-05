@@ -104,14 +104,24 @@
       out.push({ label: "要调整的变量", value: state.s3SelectedVars.join("、") });
     }
     if (s4.type === "significance") {
-      (s4.vars || []).forEach((v) => {
-        let txt = SIG[v.dir] || "";
-        if (v.dir === "pos" || v.dir === "neg") txt += v.level ? "（" + SIGL[v.level] + "）" : "";
-        out.push({ label: "变量 " + v.name, value: txt });
-      });
+      const cfgMap = new Map((s4.vars || []).map((v) => [v.name, v]));
+      const selectedVars = state.s3SelectedVars || [];
+      if (selectedVars.length) {
+        selectedVars.forEach((name) => {
+          const v = cfgMap.get(name) || { name, dir: "" };
+          let txt = SIG[v.dir] || "【未填写显著性方向】";
+          if (v.dir === "pos" || v.dir === "neg") {
+            txt += v.level ? "（" + SIGL[v.level] + "）" : "【未填写显著性水平】";
+          }
+          out.push({ label: "变量 " + name, value: txt });
+        });
+      } else {
+        out.push({ label: "已选变量", value: "无" });
+      }
       const extraLabels = (s4.extras || []).map((e) => window.SIG_EXTRA_LABELS[e]).filter(Boolean);
       if (extraLabels.length)
         out.push({ label: "其他调整项", value: extraLabels.join("、") + (s4.extraOther ? "；" + s4.extraOther : "") });
+      if (s4.note && s4.note.trim()) out.push({ label: "补充说明", value: s4.note.trim() });
     } else if (s4.type === "doit") {
       state.biz.step4.items.forEach((it) => {
         const d = s4.items && s4.items[it.key];
@@ -460,14 +470,14 @@
     if (t === "significance") {
       const vars = state.s3SelectedVars || [];
       if (vars.length) {
-        html += `<div class="section-label">请为你选择的每个变量指定要调整的显著性</div>`;
+        html += `<div class="section-label">请为你选择的每个变量指定要调整的显著性<span style="color:#d4380d">（必填）</span></div>`;
         html += vars.map((v, i) => `
           <div class="sig-var-block" data-var="${esc(v)}" data-i="${i}">
             <div class="sig-var-name">变量：<code>${esc(v)}</code></div>
             <div class="section-label">显著性方向</div>
-            <label class="opt sig-dir-opt"><input type="radio" class="sig-dir" name="sig_dir_${i}" value="pos"><span>正向显著</span></label>
-            <label class="opt sig-dir-opt"><input type="radio" class="sig-dir" name="sig_dir_${i}" value="neg"><span>负向显著</span></label>
-            <label class="opt sig-dir-opt"><input type="radio" class="sig-dir" name="sig_dir_${i}" value="none"><span>不显著</span></label>
+            <label class="opt sig-dir-opt"><input type="radio" class="sig-dir" name="sig_dir_${i}" value="pos"><span>调整为正向显著</span></label>
+            <label class="opt sig-dir-opt"><input type="radio" class="sig-dir" name="sig_dir_${i}" value="neg"><span>调整为负向显著</span></label>
+            <label class="opt sig-dir-opt"><input type="radio" class="sig-dir" name="sig_dir_${i}" value="none"><span>调整为不显著</span></label>
             <div class="sig-level-wrap" data-i="${i}"></div>
           </div>`).join("");
       } else {
@@ -478,7 +488,9 @@
         <label class="opt"><input type="checkbox" name="sig_extra" value="iv"><span>工具变量</span></label>
         <label class="opt"><input type="checkbox" name="sig_extra" value="parallel"><span>平行趋势</span></label>
         <label class="opt"><input type="checkbox" name="sig_extra" value="other"><span>其他（可备注额外需求）</span></label>
-        <div id="sig_extra_other_wrap"></div>`;
+        <div id="sig_extra_other_wrap"></div>
+        <div class="section-label" style="margin-top:18px">补充说明（选填，但强烈建议填写）</div>
+        <textarea name="sig_note" placeholder="例如：希望 y 对 x 的系数正向显著在 5% 水平；目前回归结果 t 值约 1.2；数据为面板数据等。"></textarea>`;
     } else if (t === "doit") {
       html += `<div class="section-label">勾选你要做的工作量，并填写个数（可补充额外需求）</div>`;
       b.step4.items.forEach((it) => {
@@ -516,7 +528,7 @@
     html += `</div></div>`;
     $app.innerHTML = html;
     wireStep4(t);
-    setNav({ back: { text: "返回", fn: () => go(3) }, next: { text: "确定", fn: () => { gatherS4(); go(5); } } });
+    setNav({ back: { text: "返回", fn: () => go(3) }, next: { text: "确定", fn: () => { gatherS4(); if (validateS4()) go(5); } } });
   }
 
   function wireStep4(t) {
@@ -641,7 +653,11 @@
           : "";
       })
     );
-    setNav({ back: { text: "返回", fn: () => go(4) }, next: { text: "确定", fn: () => go(6) } });
+    setNav({ back: { text: "返回", fn: () => go(4) }, next: { text: "确定", fn: () => {
+      gatherReview();
+      if (!state.review.choice) { showTip("请先确认上方需求清单是否正确"); return; }
+      go(6);
+    } } });
   }
 
   function renderStep6() {
@@ -758,6 +774,29 @@
     });
   }
 
+  /* ---------- 校验 ---------- */
+  function validateS4() {
+    const t = state.biz.step4.type;
+    if (t === "significance") {
+      const vars = state.s3SelectedVars || [];
+      const s4vars = state.s4.vars || [];
+      if (vars.length) {
+        for (const v of vars) {
+          const cfg = s4vars.find((x) => x.name === v);
+          if (!cfg || !cfg.dir) {
+            showTip("请为变量 " + v + " 选择显著性方向（正向/负向/不显著）");
+            return false;
+          }
+          if ((cfg.dir === "pos" || cfg.dir === "neg") && !cfg.level) {
+            showTip("请为变量 " + v + " 选择显著性水平（1% / 5% / 10%）");
+            return false;
+          }
+        }
+      }
+    }
+    return true;
+  }
+
   /* ---------- 收集与提交 ---------- */
   function gatherS4() {
     const t = state.biz.step4.type;
@@ -777,6 +816,7 @@
       $app.querySelectorAll('input[name="sig_extra"]:checked').forEach((c) => extras.push(c.value));
       const o = { type: "significance", vars, extras };
       if (extras.includes("other")) o.extraOther = val('textarea[name="sig_extra_other"]');
+      o.note = val('textarea[name="sig_note"]');
       state.s4 = o;
     } else if (t === "doit") {
       const items = {};
@@ -845,6 +885,10 @@
       gatherS4();
       gatherReview();
     } catch(e) { /* 步骤4/5 DOM已不存在时忽略 */ }
+    if (!state.review || !state.review.choice) {
+      showTip("请先返回第 5 步，确认需求清单是否正确");
+      return;
+    }
     const payload = buildPayload();
 
     const done = () => showDone();
@@ -853,6 +897,9 @@
     const endpoint = (window.APP_CONFIG && window.APP_CONFIG.formEndpoint) || "";
     if (endpoint) {
       const lines = payload.demandSummary || [];
+      const review = payload.review || {};
+      const reviewMap = { correct: "正确", wrong: "错误，需修改", other: "其他" };
+      const reviewSummary = (reviewMap[review.choice] || "未确认") + (review.choice && review.choice !== "correct" && review.fix ? "：" + review.fix : "");
       const form = {
         _subject: "新需求提交：" + (payload.business || ""),
         business: payload.business || "",
@@ -861,6 +908,7 @@
         selectedVars: (payload.selectedVars || []).join("、"),
         demand: JSON.stringify(payload.demand || {}, null, 2),
         review: JSON.stringify(payload.review || {}, null, 2),
+        reviewSummary: reviewSummary,
         demandSummary: lines.join("\n"),
         files: (payload.files || []).map(f => f.name + " (" + formatSize(f.size) + ")").join("、") || "无（文件请客户直接微信发）",
         submittedAt: payload.submittedAt,
