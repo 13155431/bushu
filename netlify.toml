@@ -1,0 +1,4 @@
+[build]
+  # 纯静态站点：无需构建，直接发布仓库根目录（index.html 在根）
+  command = "echo 'static site, no build'"
+  publish = "."
