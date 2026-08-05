@@ -8,12 +8,13 @@ window.APP_CONFIG = {
   brand: "StataBro 实证计量 · 服务引导",
   expertName: "statabro",
 
-  // ★ 免费收数据的开关 ★
-  // 留空 ""  → 走你自己的 Node 后端（server.js），数据进后台 admin 页
-  // 填 Formspree 等表单服务的接收地址（如 "https://formspree.io/f/xxxxxx"）
-  //   → 客户提交后，文字需求会发到该服务（邮件+后台可见），无需自己跑服务器
-  // 注意：Formspree 免费档不支持附件，文件请让客户直接微信发你（页面第6步已提示）
-  formEndpoint: "https://formspree.io/f/xqpzkqeq",
+  // ★ 免费收数据的开关（Web3Forms，免费无限条，直接发到你邮箱）★
+  // 1) formEndpoint 填 Web3Forms 固定接口地址（无需改）
+  // 2) formAccessKey 填你在 web3forms.com 领取的免费 key（和你的邮箱绑定）
+  //    领取步骤：打开 https://web3forms.com → 输入你的邮箱 → 复制 Access Key 发给我即可
+  // 注意：Web3Forms 同样不支持附件，文件请让客户直接微信发你（页面第6步已提示）
+  formEndpoint: "https://api.web3forms.com/submit",
+  formAccessKey: "768d979d-3246-41f2-b642-1753c87fa3bc",
 
   intro: {
     title: "你好，我是你的 Stata 实证计量专家",

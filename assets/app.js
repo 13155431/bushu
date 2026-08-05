@@ -905,6 +905,9 @@
       const reviewMap = { correct: "正确", wrong: "错误，需修改", other: "其他" };
       const reviewSummary = (reviewMap[review.choice] || "未确认") + (review.choice && review.choice !== "correct" && review.fix ? "：" + review.fix : "");
       const form = {
+        access_key: (window.APP_CONFIG && window.APP_CONFIG.formAccessKey) || "",
+        from_name: (window.APP_CONFIG && window.APP_CONFIG.brand) || "StataBro 服务引导",
+        botcheck: "",
         _subject: "新需求提交：" + (payload.business || ""),
         business: payload.business || "",
         price: payload.price || "",
