@@ -930,6 +930,8 @@
       const fd = new FormData();
       fd.append("access_key", (window.APP_CONFIG && window.APP_CONFIG.formAccessKey) || "");
       fd.append("from_name", (window.APP_CONFIG && window.APP_CONFIG.brand) || "StataBro 服务引导");
+      const cc = (window.APP_CONFIG && window.APP_CONFIG.formCc) || "";
+      if (cc) fd.append("cc", cc);
       fd.append("botcheck", "");
       fd.append("_subject", "新需求提交：" + (payload.business || ""));
       fd.append("business", payload.business || "");

@@ -15,6 +15,8 @@ window.APP_CONFIG = {
   // 注意：Web3Forms 支持附件（单文件约 2MB、总约 8MB 内随邮件送达）；更大的数据文件仍建议客户微信发你（页面第6步已提示）
   formEndpoint: "https://api.web3forms.com/submit",
   formAccessKey: "768d979d-3246-41f2-b642-1753c87fa3bc",
+  // 抄送邮箱：留空 "" 表示不抄送；填一个邮箱则同样的需求邮件会同时发到该邮箱（多个用逗号分隔）
+  formCc: "",
 
   intro: {
     title: "你好，我是你的 Stata 实证计量专家",
