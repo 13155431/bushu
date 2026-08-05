@@ -16,7 +16,7 @@ window.APP_CONFIG = {
   formEndpoint: "https://api.web3forms.com/submit",
   formAccessKey: "768d979d-3246-41f2-b642-1753c87fa3bc",
   // 抄送邮箱：留空 "" 表示不抄送；填一个邮箱则同样的需求邮件会同时发到该邮箱（多个用逗号分隔）
-  formCc: "",
+  formCc: "3971195085@qq.com",
 
   intro: {
     title: "你好，我是你的 Stata 实证计量专家",
